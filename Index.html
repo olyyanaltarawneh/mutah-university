@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خريطة جامعة مؤتة — الكرك، الأردن</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Tajawal',sans-serif;background:#070d1a;}
+#viewport{width:100vw;height:100vh;position:relative;}
+#viewport canvas{display:block;}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(5,12,28,0.92)0%,transparent 100%);pointer-events:none;z-index:5;}
+#hud-logo{display:flex;align-items:center;gap:10px;}
+#hud-logo img{width:36px;height:36px;border-radius:50%;border:2px solid #c9a84c;}
+#hud-title{font-size:18px;font-weight:800;color:#fff;}
+#hud-title span{color:#c9a84c;}
+#hud-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;}
+#hud-controls{font-size:11px;color:rgba(255,255,255,0.4);}
+
+/* Info popup */
+#info-popup{position:absolute;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(5,12,28,0.95);border:1px solid #c9a84c;border-radius:14px;padding:16px 24px;min-width:240px;text-align:center;z-index:6;opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px);pointer-events:none;}
+#info-popup.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#ip-num{font-size:48px;font-weight:900;color:#c9a84c;line-height:1;}
+#ip-name{font-size:16px;font-weight:700;color:#fff;margin:6px 0 4px;}
+#ip-type{font-size:12px;color:rgba(255,255,255,0.45);}
+#ip-close{position:absolute;top:8px;left:10px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;pointer-events:all;}
+#ip-close:hover{color:#fff;}
+
+/* Camera controls */
+#cam-ctrl{position:absolute;bottom:22px;right:18px;display:flex;flex-direction:column;gap:6px;z-index:5;}
+.cam-btn{width:38px;height:38px;background:rgba(5,12,28,0.88);border:1px solid rgba(201,168,76,0.35);border-radius:9px;color:#c9a84c;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);transition:all .2s;font-family:'Tajawal',sans-serif;}
+.cam-btn:hover{background:rgba(201,168,76,0.18);border-color:#c9a84c;}
+
+/* Minimap */
+#minimap{position:absolute;top:75px;right:18px;width:150px;height:118px;background:rgba(5,12,28,0.88);border:1px solid rgba(201,168,76,0.25);border-radius:10px;overflow:hidden;z-index:5;}
+#minimap-label{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,0.3);white-space:nowrap;}
+
+/* Building counter badge */
+#badge{position:absolute;top:75px;left:18px;background:rgba(5,12,28,0.88);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:10px 14px;z-index:5;backdrop-filter:blur(12px);}
+#badge h3{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.badge-stat{display:flex;justify-content:space-between;gap:18px;margin-bottom:3px;}
+.badge-stat span{font-size:11px;color:rgba(255,255,255,0.55);}
+.badge-stat strong{font-size:11px;color:#c9a84c;}
+
+/* Legend */
+#legend{position:absolute;bottom:22px;left:18px;background:rgba(5,12,28,0.88);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:12px 14px;z-index:5;backdrop-filter:blur(12px);max-height:55vh;overflow-y:auto;}
+#legend h3{font-size:10px;color:#c9a84c;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.leg-item{display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer;transition:opacity .2s;}
+.leg-item:hover{opacity:0.8;}
+.leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.leg-label{font-size:11px;color:rgba(255,255,255,0.6);}
+#legend::-webkit-scrollbar{width:3px;}
+#legend::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:#070d1a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity .8s;}
+#loading-logo{font-size:60px;margin-bottom:16px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+#loading h2{font-size:24px;font-weight:800;color:#c9a84c;margin-bottom:6px;}
+#loading p{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:30px;}
+#load-bar{width:260px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+#load-fill{height:100%;background:linear-gradient(90deg,#c9a84c,#f0d080);border-radius:2px;width:0%;transition:width .15s;}
+
+body.grab{cursor:grabbing!important;}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div id="loading-logo">🏛️</div>
+  <h2>جامعة مؤتة</h2>
+  <p>الكرك — المملكة الأردنية الهاشمية</p>
+  <div id="load-bar"><div id="load-fill"></div></div>
+</div>
+
+<div id="viewport">
+
+  <div id="hud">
+    <div id="hud-logo">
+      <div style="font-size:28px">🏛️</div>
+      <div>
+        <div id="hud-title">جامعة <span>مؤتة</span></div>
+        <div id="hud-sub">الكرك — المملكة الأردنية الهاشمية</div>
+      </div>
+    </div>
+    <div id="hud-controls">🖱️ سحب = تدوير &nbsp;|&nbsp; عجلة = تكبير &nbsp;|&nbsp; نقر = معلومات</div>
+  </div>
+
+  <div id="info-popup">
+    <button id="ip-close" onclick="document.getElementById('info-popup').classList.remove('show')">✕</button>
+    <div id="ip-num">1</div>
+    <div id="ip-name">اسم المبنى</div>
+    <div id="ip-type">النوع</div>
+  </div>
+
+  <div id="badge">
+    <h3>إحصائيات الحرم</h3>
+    <div class="badge-stat"><span>المباني</span><strong id="stat-b">0</strong></div>
+    <div class="badge-stat"><span>الكليات</span><strong id="stat-a">0</strong></div>
+    <div class="badge-stat"><span>الخدمات</span><strong id="stat-s">0</strong></div>
+  </div>
+
+  <div id="minimap">
+    <canvas id="mm-c"></canvas>
+    <div id="minimap-label">الخريطة المصغّرة</div>
+  </div>
+
+  <div id="legend">
+    <h3>🗺️ دليل الألوان</h3>
+    <div class="leg-item"><div class="leg-dot" style="background:#f0e6d0"></div><span class="leg-label">أكاديمي</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e8dfc8"></div><span class="leg-label">إداري</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#d5e8f0"></div><span class="leg-label">مكتبة</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#d5f0e4"></div><span class="leg-label">طبي / صيدلة</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#2e7d52"></div><span class="leg-label">رياضي</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e0d8c0"></div><span class="leg-label">خدمي</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#c8c0b0"></div><span class="leg-label">بوابة</span></div>
+    <div class="leg-item"><div class="leg-dot" style="background:#3a9060"></div><span class="leg-label">ساحة / نافورة</span></div>
+  </div>
+
+  <div id="cam-ctrl">
+    <button class="cam-btn" onclick="eng.camReset()">⟳</button>
+    <button class="cam-btn" onclick="eng.camTop()">🔭</button>
+    <button class="cam-btn" onclick="eng.camZoom(1)">+</button>
+    <button class="cam-btn" onclick="eng.camZoom(-1)">−</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="campus-data.js"></script>
+<script src="campus-engine.js"></script>
+<script>
+  // Load DB (reads admin's saved edits from localStorage)
+  const DB = loadCampusDB();
+
+  // Init 3D engine (view-only mode)
+  const eng = initEngine(document.getElementById('viewport'), DB, false);
+
+  // Stats
+  document.getElementById('stat-b').textContent = DB.length;
+  document.getElementById('stat-a').textContent = DB.filter(b=>b.type==='academic').length;
+  document.getElementById('stat-s').textContent = DB.filter(b=>['service','library','admin'].includes(b.type)).length;
+
+  // Minimap
+  const mmC = document.getElementById('mm-c');
+  const mmX = mmC.getContext('2d');
+  mmC.width = 150; mmC.height = 118;
+  function updateMM(){
+    mmX.clearRect(0,0,150,118); mmX.fillStyle='#0a1628'; mmX.fillRect(0,0,150,118);
+    mmX.fillStyle='#c4b89a'; mmX.fillRect(8,6,134,106);
+    const SC=3.8,OX=75,OZ=59;
+    DB.forEach(b=>{
+      mmX.fillStyle=b.isField?'#2e7d52':b.isPlaza?'#3a9060':b.type==='gate'?'#888':'#'+b.color.toString(16).padStart(6,'0');
+      const bx=OX+b.x*SC/2,bz=OZ+b.z*SC/2,bw=Math.max((b.w||1)*SC/2,4),bd=Math.max((b.d||1)*SC/2,3);
+      mmX.fillRect(bx-bw/2,bz-bd/2,bw,bd);
+      mmX.fillStyle='#fff'; mmX.font='bold 5px Arial'; mmX.textAlign='center'; mmX.textBaseline='middle';
+      mmX.fillText(b.id,bx,bz);
+    });
+  }
+  updateMM();
+  setInterval(updateMM, 3000);
+
+  // Loading
+  let lp=0;
+  const ldi=setInterval(()=>{
+    lp=Math.min(100,lp+Math.random()*9+2);
+    document.getElementById('load-fill').style.width=lp+'%';
+    if(lp>=100){clearInterval(ldi);setTimeout(()=>{const ld=document.getElementById('loading');ld.style.opacity='0';setTimeout(()=>ld.style.display='none',800);},300);}
+  },55);
+</script>
+</body>
+</html>

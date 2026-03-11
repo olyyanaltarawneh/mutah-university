@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔐 لوحة تحكم المدير — جامعة مؤتة</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+:root{--gold:#c9a84c;--gold2:#f0d080;--dark:#070d1a;--panel:rgba(7,13,26,0.97);--border:rgba(201,168,76,0.25);}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Tajawal',sans-serif;background:var(--dark);}
+
+/* ── LAYOUT ── */
+#app{display:flex;width:100vw;height:100vh;}
+#viewport{flex:1;position:relative;overflow:hidden;}
+#viewport canvas{display:block;}
+
+/* ── DASHBOARD ── */
+#dashboard{width:340px;min-width:340px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s;z-index:10;}
+#dashboard.collapsed{width:0;min-width:0;border:none;}
+#dash-header{padding:14px 18px 12px;background:linear-gradient(135deg,#0a1628,#0d1f3c);border-bottom:1px solid var(--border);flex-shrink:0;}
+#dash-header h1{font-size:14px;font-weight:800;color:var(--gold);display:flex;align-items:center;gap:6px;}
+#dash-header p{font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;}
+#dash-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:#080f1e;}
+.dtab{flex:1;padding:9px 3px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;text-align:center;border-bottom:2px solid transparent;transition:all .2s;font-family:'Tajawal',sans-serif;}
+.dtab.active{color:var(--gold);border-bottom-color:var(--gold);background:rgba(201,168,76,0.05);}
+#dash-content{flex:1;overflow-y:auto;padding:11px;}
+#dash-content::-webkit-scrollbar{width:3px;}
+#dash-content::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:2px;}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+
+/* Cards */
+.bld-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:all .2s;}
+.bld-card:hover{border-color:rgba(201,168,76,0.4);background:rgba(201,168,76,0.05);}
+.bld-card.selected{border-color:var(--gold);background:rgba(201,168,76,0.1);}
+.bld-card-top{display:flex;align-items:center;gap:8px;}
+.bld-num{width:24px;height:24px;border-radius:6px;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;}
+.bld-card.selected .bld-num{background:#ff6b35;}
+.bld-name{font-size:11px;font-weight:600;color:#fff;flex:1;}
+.bld-type{font-size:9px;color:rgba(255,255,255,0.3);margin-top:1px;}
+.bld-actions{display:flex;gap:3px;margin-top:6px;}
+.bld-btn{flex:1;padding:4px 2px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid;font-family:'Tajawal',sans-serif;transition:all .2s;background:transparent;}
+.bld-btn.focus{border-color:#4fc3f7;color:#4fc3f7;}.bld-btn.focus:hover{background:rgba(79,195,247,0.1);}
+.bld-btn.edit{border-color:var(--gold);color:var(--gold);}.bld-btn.edit:hover{background:rgba(201,168,76,0.1);}
+.bld-btn.del{border-color:#e05555;color:#e05555;}.bld-btn.del:hover{background:rgba(224,85,85,0.1);}
+
+/* Edit form */
+.edit-section{margin-bottom:13px;}
+.edit-section h3{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+.field-row{margin-bottom:8px;}
+.field-label{font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:3px;display:block;}
+.field-input{width:100%;padding:6px 9px;border-radius:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font-family:'Tajawal',sans-serif;font-size:12px;outline:none;transition:border-color .2s;}
+.field-input:focus{border-color:var(--gold);}
+select.field-input{background:rgba(10,20,40,0.9);}
+.action-btn{width:100%;padding:8px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-gold{background:linear-gradient(135deg,#c9a84c,#f0d080);color:#000;border:none;}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(201,168,76,0.4);}
+.btn-outline{background:transparent;border:1px solid var(--gold);color:var(--gold);}
+.btn-outline:hover{background:rgba(201,168,76,0.1);}
+.btn-red{background:transparent;border:1px solid #e05555;color:#e05555;}
+.btn-red:hover{background:rgba(224,85,85,0.1);}
+.btn-green{background:linear-gradient(135deg,#1e7a4a,#2ea868);color:#fff;border:none;}
+.btn-green:hover{transform:translateY(-1px);}
+.color-row{display:flex;gap:4px;flex-wrap:wrap;}
+.color-dot{width:20px;height:20px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
+.color-dot.active{border-color:#fff;transform:scale(1.2);}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.setting-label{font-size:11px;color:rgba(255,255,255,0.65);}
+.toggle{width:34px;height:18px;border-radius:9px;background:rgba(255,255,255,0.15);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--gold);}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .2s;}
+.toggle.on::after{left:18px;}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(5,12,28,0.9)0%,transparent 100%);pointer-events:none;z-index:5;}
+#hud-title{font-size:15px;font-weight:800;color:#fff;}
+#hud-title span{color:var(--gold);}
+#hud-hint{font-size:10px;color:rgba(255,255,255,0.35);}
+#hud-admin-badge{background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--gold);pointer-events:all;}
+
+/* Info popup */
+#info-popup{position:absolute;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(5,12,28,0.95);border:1px solid var(--gold);border-radius:13px;padding:13px 20px;min-width:210px;text-align:center;z-index:6;opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px);pointer-events:none;}
+#info-popup.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#ip-num{font-size:40px;font-weight:900;color:var(--gold);line-height:1;}
+#ip-name{font-size:13px;font-weight:700;color:#fff;margin:5px 0 3px;}
+#ip-type{font-size:10px;color:rgba(255,255,255,0.4);}
+
+/* Toggle dash */
+#toggle-dash{position:absolute;top:50%;right:0;transform:translateY(-50%);width:18px;height:52px;background:rgba(201,168,76,0.15);border:1px solid var(--border);border-right:none;border-radius:6px 0 0 6px;cursor:pointer;z-index:15;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:9px;transition:all .2s;}
+#toggle-dash:hover{background:rgba(201,168,76,0.3);}
+
+/* Cam controls */
+#cam-ctrl{position:absolute;bottom:16px;right:12px;display:flex;flex-direction:column;gap:5px;z-index:5;}
+.cam-btn{width:34px;height:34px;background:rgba(5,12,28,0.88);border:1px solid rgba(201,168,76,0.3);border-radius:8px;color:var(--gold);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all .2s;}
+.cam-btn:hover{background:rgba(201,168,76,0.18);border-color:var(--gold);}
+
+/* Minimap */
+#minimap{position:absolute;top:66px;left:12px;width:130px;height:102px;background:rgba(5,12,28,0.88);border:1px solid var(--border);border-radius:9px;overflow:hidden;z-index:5;}
+#minimap-label{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:8px;color:rgba(255,255,255,0.3);white-space:nowrap;}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity .8s;}
+#loading-logo{font-size:52px;margin-bottom:14px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+#loading h2{font-size:22px;font-weight:800;color:var(--gold);margin-bottom:6px;}
+#loading p{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:28px;}
+#load-bar{width:250px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+#load-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:2px;width:0%;transition:width .15s;}
+
+/* Save indicator */
+#save-badge{position:absolute;top:66px;right:12px;background:rgba(46,168,104,0.15);border:1px solid rgba(46,168,104,0.4);border-radius:7px;padding:4px 10px;font-size:10px;color:#2ea868;z-index:5;opacity:0;transition:opacity .4s;}
+#save-badge.show{opacity:1;}
+
+.notif{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-60px);background:rgba(5,12,28,0.95);border:1px solid var(--gold);border-radius:9px;padding:8px 18px;font-size:11px;font-weight:600;color:var(--gold);z-index:999;transition:transform .3s;backdrop-filter:blur(20px);white-space:nowrap;}
+.notif.show{transform:translateX(-50%) translateY(0);}
+body.grab{cursor:grabbing!important;}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div id="loading-logo">🔐</div>
+  <h2>لوحة تحكم المدير</h2>
+  <p>جامعة مؤتة — الكرك</p>
+  <div id="load-bar"><div id="load-fill"></div></div>
+</div>
+
+<div id="app">
+  <div id="viewport">
+    <div id="hud">
+      <div id="hud-title">🏛️ جامعة <span>مؤتة</span> — وضع المدير</div>
+      <div style="display:flex;align-items:center;gap:10px;pointer-events:all;">
+        <span id="hud-admin-badge">🔐 مدير</span>
+        <a href="index.html" target="_blank" style="background:rgba(79,195,247,0.15);border:1px solid rgba(79,195,247,0.4);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;color:#4fc3f7;text-decoration:none;">👁️ عرض الطلاب</a>
+      </div>
+    </div>
+
+    <div id="info-popup">
+      <div id="ip-num">1</div>
+      <div id="ip-name">اسم المبنى</div>
+      <div id="ip-type">النوع</div>
+    </div>
+
+    <div id="save-badge">💾 تم الحفظ</div>
+
+    <div id="minimap"><canvas id="mm-c"></canvas><div id="minimap-label">خريطة مصغّرة</div></div>
+
+    <div id="cam-ctrl">
+      <button class="cam-btn" onclick="eng.camReset()">⟳</button>
+      <button class="cam-btn" onclick="eng.camTop()">🔭</button>
+      <button class="cam-btn" onclick="eng.camZoom(1)">+</button>
+      <button class="cam-btn" onclick="eng.camZoom(-1)">−</button>
+    </div>
+
+    <div id="toggle-dash" onclick="toggleDash()">◀</div>
+  </div>
+
+  <!-- ═══════ DASHBOARD ═══════ -->
+  <div id="dashboard">
+    <div id="dash-header">
+      <h1>🎛️ لوحة التحكم</h1>
+      <p>التعديلات تُحفظ تلقائياً وتظهر للطلاب فوراً</p>
+    </div>
+    <div id="dash-tabs">
+      <div class="dtab active" onclick="switchTab('buildings')">🏢 المباني</div>
+      <div class="dtab" onclick="switchTab('edit')">✏️ تعديل</div>
+      <div class="dtab" onclick="switchTab('add')">➕ إضافة</div>
+      <div class="dtab" onclick="switchTab('settings')">⚙️ إعدادات</div>
+    </div>
+    <div id="dash-content">
+
+      <div id="tab-buildings" class="tab-pane active">
+        <div id="bld-list"></div>
+      </div>
+
+      <div id="tab-edit" class="tab-pane">
+        <div id="no-sel" style="text-align:center;padding:36px 10px;color:rgba(255,255,255,0.3);">
+          <div style="font-size:30px;margin-bottom:10px;">👆</div>
+          <div style="font-size:11px;">انقر على أي مبنى لتعديله</div>
+        </div>
+        <div id="edit-form" style="display:none;">
+          <div class="edit-section">
+            <h3>📝 المعلومات</h3>
+            <div class="field-row"><label class="field-label">رقم المبنى</label><input class="field-input" id="e-num" type="number" min="1" max="99"></div>
+            <div class="field-row"><label class="field-label">اسم المبنى</label><input class="field-input" id="e-name" type="text"></div>
+            <div class="field-row"><label class="field-label">التصنيف</label>
+              <select class="field-input" id="e-type">
+                <option value="academic">🎓 أكاديمي</option><option value="admin">🏛️ إداري</option>
+                <option value="library">📚 مكتبة</option><option value="medical">🏥 طبي</option>
+                <option value="sport">⚽ رياضي</option><option value="service">🔧 خدمي</option>
+                <option value="gate">🚪 بوابة</option><option value="plaza">⛲ ساحة</option>
+              </select>
+            </div>
+          </div>
+          <div class="edit-section">
+            <h3>📐 الأبعاد</h3>
+            <div class="field-row"><label class="field-label">العرض: <span id="v-w">2</span></label><input type="range" class="field-input" style="padding:4px 0" id="e-w" min="0.5" max="9" step="0.25" oninput="document.getElementById('v-w').textContent=parseFloat(this.value).toFixed(2);liveApply()"></div>
+            <div class="field-row"><label class="field-label">العمق: <span id="v-d">2</span></label><input type="range" class="field-input" style="padding:4px 0" id="e-d" min="0.5" max="9" step="0.25" oninput="document.getElementById('v-d').textContent=parseFloat(this.value).toFixed(2);liveApply()"></div>
+            <div class="field-row"><label class="field-label">الطوابق: <span id="v-h">3</span></label><input type="range" class="field-input" style="padding:4px 0" id="e-h" min="1" max="10" step="1" oninput="document.getElementById('v-h').textContent=this.value;liveApply()"></div>
+          </div>
+          <div class="edit-section">
+            <h3>🎨 اللون</h3>
+            <div class="color-row" id="color-pal"></div>
+          </div>
+          <div class="edit-section">
+            <h3>📍 الموقع</h3>
+            <div class="field-row"><label class="field-label">موضع X: <span id="v-x">0</span></label><input type="range" class="field-input" style="padding:4px 0" id="e-x" min="-22" max="22" step="0.5" oninput="document.getElementById('v-x').textContent=this.value;liveApply()"></div>
+            <div class="field-row"><label class="field-label">موضع Z: <span id="v-z">0</span></label><input type="range" class="field-input" style="padding:4px 0" id="e-z" min="-22" max="22" step="0.5" oninput="document.getElementById('v-z').textContent=this.value;liveApply()"></div>
+            <div class="field-row"><label class="field-label">دوران: <span id="v-r">0</span>°</label><input type="range" class="field-input" style="padding:4px 0" id="e-rot" min="0" max="270" step="90" oninput="document.getElementById('v-r').textContent=this.value;liveApply()"></div>
+          </div>
+          <button class="action-btn btn-gold" onclick="applyEdit()">✅ حفظ التغييرات</button>
+          <button class="action-btn btn-outline" onclick="dupSelected()">📋 نسخ المبنى</button>
+          <button class="action-btn btn-red" onclick="delSelected()">🗑️ حذف</button>
+        </div>
+      </div>
+
+      <div id="tab-add" class="tab-pane">
+        <div class="edit-section">
+          <h3>🏗️ مبنى جديد</h3>
+          <div class="field-row"><label class="field-label">الاسم *</label><input class="field-input" id="a-name" placeholder="مثلاً: كلية الهندسة"></div>
+          <div class="field-row"><label class="field-label">الرقم (اختياري)</label><input class="field-input" id="a-num" type="number" placeholder="تلقائي"></div>
+          <div class="field-row"><label class="field-label">النوع</label>
+            <select class="field-input" id="a-type">
+              <option value="academic">🎓 أكاديمي</option><option value="admin">🏛️ إداري</option>
+              <option value="library">📚 مكتبة</option><option value="medical">🏥 طبي</option>
+              <option value="sport">⚽ رياضي</option><option value="service">🔧 خدمي</option>
+            </select>
+          </div>
+          <div class="field-row"><label class="field-label">العرض</label><input type="range" class="field-input" style="padding:4px 0" id="a-w" min="1" max="8" step="0.5" value="3"></div>
+          <div class="field-row"><label class="field-label">العمق</label><input type="range" class="field-input" style="padding:4px 0" id="a-d" min="1" max="8" step="0.5" value="2.5"></div>
+          <div class="field-row"><label class="field-label">الطوابق</label><input type="range" class="field-input" style="padding:4px 0" id="a-h" min="1" max="8" step="1" value="3"></div>
+          <button class="action-btn btn-green" onclick="addBuilding()">➕ إضافة وحفظ</button>
+        </div>
+        <div class="edit-section">
+          <h3>📤 استيراد / تصدير</h3>
+          <button class="action-btn btn-outline" onclick="exportJSON()">💾 تصدير JSON</button>
+          <button class="action-btn btn-outline" onclick="importJSON()">📂 استيراد JSON</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+          <button class="action-btn btn-red" onclick="resetAll()">🔄 إعادة تعيين الكل</button>
+        </div>
+      </div>
+
+      <div id="tab-settings" class="tab-pane">
+        <div class="edit-section">
+          <h3>🎬 الأنيميشن</h3>
+          <div class="setting-row"><span class="setting-label">تشغيل الأنيميشن</span><div class="toggle on" onclick="togSetting('anim',this)"></div></div>
+          <div class="setting-row"><span class="setting-label">سيارات متحركة</span><div class="toggle on" onclick="togSetting('cars',this)"></div></div>
+          <div class="setting-row"><span class="setting-label">أشخاص يمشون</span><div class="toggle on" onclick="togSetting('people',this)"></div></div>
+          <div class="setting-row"><span class="setting-label">النافورة</span><div class="toggle on" onclick="togSetting('fountain',this)"></div></div>
+          <div class="setting-row"><span class="setting-label">أرقام المباني</span><div class="toggle on" id="tog-labels" onclick="togLabels(this)"></div></div>
+          <div class="setting-row"><span class="setting-label">الظلال</span><div class="toggle on" onclick="togSetting('shadows',this)"></div></div>
+        </div>
+        <div class="edit-section">
+          <h3>☀️ البيئة</h3>
+          <div class="field-row"><label class="field-label">شدة الشمس</label><input type="range" class="field-input" style="padding:4px 0" min="0.3" max="3" step="0.1" value="2.2" oninput="eng.sunL.intensity=parseFloat(this.value)"></div>
+          <div class="field-row"><label class="field-label">وقت اليوم</label><input type="range" class="field-input" style="padding:4px 0" min="0" max="24" step="0.5" value="14" oninput="eng.setTOD(parseFloat(this.value))"></div>
+          <div class="field-row"><label class="field-label">مدى الرؤية</label><input type="range" class="field-input" style="padding:4px 0" min="30" max="150" step="5" value="80" oninput="eng.scene.fog.far=parseInt(this.value)"></div>
+        </div>
+        <div class="edit-section">
+          <h3>🔗 روابط مفيدة</h3>
+          <a href="index.html" target="_blank" class="action-btn btn-outline" style="text-decoration:none;margin-bottom:6px;">👁️ فتح صفحة الطلاب</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif-el"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="campus-data.js"></script>
+<script src="campus-engine.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  ADMIN PAGE LOGIC
+// ═══════════════════════════════════════════════
+let DB = loadCampusDB();
+const eng = initEngine(document.getElementById('viewport'), DB, true);
+
+let selectedId = null;
+
+// Called by engine when building is clicked
+window.onBuildingSelected = function(b) {
+  selectedId = b.id;
+  loadEditForm(b);
+  switchTab('edit');
+  // Highlight card
+  document.querySelectorAll('.bld-card').forEach(el=>el.classList.remove('selected'));
+  const card = document.getElementById('bc-'+b.id);
+  if(card){ card.classList.add('selected'); card.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+};
+
+// ── AUTO-SAVE ──
+function autoSave() {
+  saveCampusDB(DB);
+  const badge = document.getElementById('save-badge');
+  badge.classList.add('show');
+  setTimeout(()=>badge.classList.remove('show'), 1800);
+}
+
+// ── EDIT FORM ──
+function loadEditForm(b) {
+  document.getElementById('no-sel').style.display = 'none';
+  document.getElementById('edit-form').style.display = 'block';
+  document.getElementById('e-num').value = b.id;
+  document.getElementById('e-name').value = b.name;
+  document.getElementById('e-type').value = b.type;
+  document.getElementById('e-w').value = b.w;   document.getElementById('v-w').textContent = b.w;
+  document.getElementById('e-d').value = b.d;   document.getElementById('v-d').textContent = b.d;
+  document.getElementById('e-h').value = b.h||2; document.getElementById('v-h').textContent = b.h||2;
+  document.getElementById('e-x').value = b.x;   document.getElementById('v-x').textContent = b.x;
+  document.getElementById('e-z').value = b.z;   document.getElementById('v-z').textContent = b.z;
+  document.getElementById('e-rot').value = b.rot||0; document.getElementById('v-r').textContent = b.rot||0;
+  document.querySelectorAll('.color-dot').forEach(d=>d.classList.toggle('active',parseInt(d.dataset.v)===b.color));
+}
+
+function liveApply() {
+  if(!selectedId) return;
+  const b = DB.find(x=>x.id===selectedId); if(!b) return;
+  b.w = parseFloat(document.getElementById('e-w').value);
+  b.d = parseFloat(document.getElementById('e-d').value);
+  b.h = parseInt(document.getElementById('e-h').value)||1;
+  b.x = parseFloat(document.getElementById('e-x').value);
+  b.z = parseFloat(document.getElementById('e-z').value);
+  b.rot = parseInt(document.getElementById('e-rot').value)||0;
+  eng.buildOne(b);
+  updateMM();
+}
+
+function applyEdit() {
+  if(!selectedId) return;
+  const b = DB.find(x=>x.id===selectedId); if(!b) return;
+  const newNum = parseInt(document.getElementById('e-num').value)||b.id;
+  b.name = document.getElementById('e-name').value || b.name;
+  b.type = document.getElementById('e-type').value;
+  b.w = parseFloat(document.getElementById('e-w').value);
+  b.d = parseFloat(document.getElementById('e-d').value);
+  b.h = parseInt(document.getElementById('e-h').value)||1;
+  b.x = parseFloat(document.getElementById('e-x').value);
+  b.z = parseFloat(document.getElementById('e-z').value);
+  b.rot = parseInt(document.getElementById('e-rot').value)||0;
+  if(newNum !== b.id && !DB.find(x=>x.id===newNum)){
+    eng.destroyOne(b.id); b.id = newNum; selectedId = newNum;
+  }
+  eng.buildOne(b);
+  renderList(); updateMM(); autoSave();
+  notify('✅ تم الحفظ وسيظهر للطلاب فوراً');
+}
+
+function delSelected() {
+  if(!selectedId) return;
+  if(!confirm('حذف هذا المبنى؟')) return;
+  eng.destroyOne(selectedId);
+  DB = DB.filter(x=>x.id!==selectedId);
+  selectedId = null;
+  document.getElementById('no-sel').style.display = 'block';
+  document.getElementById('edit-form').style.display = 'none';
+  document.getElementById('info-popup').classList.remove('show');
+  renderList(); updateMM(); autoSave();
+  notify('🗑️ تم الحذف');
+}
+
+function dupSelected() {
+  if(!selectedId) return;
+  const b = DB.find(x=>x.id===selectedId); if(!b) return;
+  const nid = Math.max(...DB.map(x=>x.id))+1;
+  const nb = {...b, id:nid, x:b.x+2.5, z:b.z+2, name:b.name+' (نسخة)'};
+  DB.push(nb); eng.buildOne(nb);
+  renderList(); updateMM(); autoSave();
+  eng.selectBuilding(nid);
+  notify('📋 تم النسخ');
+}
+
+function addBuilding() {
+  const name = document.getElementById('a-name').value.trim();
+  if(!name){ notify('⚠️ أدخل الاسم', true); return; }
+  const maxId = Math.max(...DB.map(x=>x.id))+1;
+  const uNum = parseInt(document.getElementById('a-num').value);
+  const nb = {
+    id: uNum && !DB.find(x=>x.id===uNum) ? uNum : maxId,
+    name, type: document.getElementById('a-type').value,
+    x:(Math.random()-.5)*18, z:(Math.random()-.5)*18,
+    w:parseFloat(document.getElementById('a-w').value),
+    d:parseFloat(document.getElementById('a-d').value),
+    h:parseInt(document.getElementById('a-h').value)||3,
+    rot:0, color:0xf0e6d0
+  };
+  DB.push(nb); eng.buildOne(nb);
+  renderList(); updateMM(); autoSave();
+  eng.selectBuilding(nb.id);
+  document.getElementById('a-name').value = '';
+  notify('✅ تمت الإضافة وحُفظت');
+}
+
+function exportJSON() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json,'+encodeURIComponent(JSON.stringify(DB,null,2));
+  a.download = 'mutah_campus.json'; a.click();
+  notify('💾 تم التصدير');
+}
+
+function importJSON() { document.getElementById('import-file').click(); }
+
+function handleImport(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      DB.forEach(b=>eng.destroyOne(b.id));
+      eng.pickable.length = 0;
+      DB.length = 0;
+      data.forEach(b=>DB.push(b));
+      DB.forEach(b=>eng.buildOne(b));
+      renderList(); updateMM(); autoSave();
+      notify('📂 تم الاستيراد بنجاح');
+    } catch(err){ notify('❌ خطأ في الملف', true); }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if(!confirm('إعادة تعيين كل المباني إلى الافتراضي؟')) return;
+  DB.forEach(b=>eng.destroyOne(b.id));
+  eng.pickable.length = 0;
+  DB.length = 0;
+  CAMPUS_DB_DEFAULT.forEach(b=>DB.push(JSON.parse(JSON.stringify(b))));
+  DB.forEach(b=>eng.buildOne(b));
+  renderList(); updateMM(); autoSave();
+  notify('🔄 تمت إعادة التعيين');
+}
+
+// ── LIST ──
+function renderList() {
+  const list = document.getElementById('bld-list');
+  list.innerHTML = '';
+  DB.forEach(b=>{
+    const d = document.createElement('div');
+    d.className = 'bld-card'+(b.id===selectedId?' selected':'');
+    d.id = 'bc-'+b.id;
+    d.innerHTML = `
+      <div class="bld-card-top">
+        <div class="bld-num">${b.id}</div>
+        <div><div class="bld-name">${b.name}</div>
+        <div class="bld-type">${TEMOJI[b.type]||'🏢'} ${TLABELS[b.type]||b.type}</div></div>
+      </div>
+      <div class="bld-actions">
+        <button class="bld-btn focus" onclick="focusOn(${b.id})">🔍</button>
+        <button class="bld-btn edit" onclick="eng.selectBuilding(${b.id})">✏️ تعديل</button>
+        <button class="bld-btn del" onclick="selectedId=${b.id};delSelected()">🗑️</button>
+      </div>`;
+    list.appendChild(d);
+  });
+}
+
+function focusOn(id) {
+  const b = DB.find(x=>x.id===id); if(!b) return;
+  eng.selectBuilding(id); eng.focusOn(b);
+}
+
+// Color palette
+const palEl = document.getElementById('color-pal');
+PALETTE.forEach(p=>{
+  const d = document.createElement('div');
+  d.className='color-dot'; d.dataset.v=p.v; d.style.background=p.h;
+  d.onclick=()=>{
+    if(!selectedId) return;
+    const b=DB.find(x=>x.id===selectedId); if(!b) return;
+    b.color=p.v;
+    document.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('active'));
+    d.classList.add('active');
+    eng.buildOne(b); updateMM(); autoSave();
+  };
+  palEl.appendChild(d);
+});
+
+function switchTab(name){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const map={buildings:'المباني',edit:'تعديل',add:'إضافة',settings:'إعدادات'};
+  document.querySelectorAll('.dtab').forEach(t=>{if(t.textContent.trim().includes(map[name]))t.classList.add('active');});
+}
+
+function togSetting(k,el){
+  eng.settings[k]=!eng.settings[k]; el.classList.toggle('on',eng.settings[k]);
+  if(k==='shadows') eng.renderer.shadowMap.enabled=eng.settings[k];
+}
+function togLabels(el){ eng.settings.labels=!eng.settings.labels; el.classList.toggle('on',eng.settings.labels); eng.setLabels(eng.settings.labels); }
+
+let dashOpen=true;
+function toggleDash(){
+  dashOpen=!dashOpen;
+  document.getElementById('dashboard').classList.toggle('collapsed',!dashOpen);
+  document.getElementById('toggle-dash').textContent=dashOpen?'▶':'◀';
+}
+
+let notTO=null;
+function notify(msg,err=false){
+  const n=document.getElementById('notif-el');
+  n.textContent=msg; n.style.color=err?'#ff5555':'#c9a84c'; n.style.borderColor=err?'#ff5555':'#c9a84c';
+  n.classList.add('show'); clearTimeout(notTO); notTO=setTimeout(()=>n.classList.remove('show'),2500);
+}
+
+// ── MINIMAP ──
+const mmC=document.getElementById('mm-c'), mmX=mmC.getContext('2d');
+mmC.width=130; mmC.height=102;
+function updateMM(){
+  mmX.clearRect(0,0,130,102); mmX.fillStyle='#0a1628'; mmX.fillRect(0,0,130,102);
+  mmX.fillStyle='#c4b89a'; mmX.fillRect(7,5,116,92);
+  const SC=3.4,OX=65,OZ=51;
+  DB.forEach(b=>{
+    mmX.fillStyle=b.isField?'#2e7d52':b.isPlaza?'#3a9060':b.type==='gate'?'#888':'#'+b.color.toString(16).padStart(6,'0');
+    const bx=OX+b.x*SC/2,bz=OZ+b.z*SC/2,bw=Math.max((b.w||1)*SC/2,4),bd=Math.max((b.d||1)*SC/2,3);
+    mmX.fillRect(bx-bw/2,bz-bd/2,bw,bd);
+    if(b.id===selectedId){mmX.strokeStyle='#f0c040';mmX.lineWidth=1.5;mmX.strokeRect(bx-bw/2,bz-bd/2,bw,bd);}
+    mmX.fillStyle='#fff'; mmX.font='bold 5px Arial'; mmX.textAlign='center'; mmX.textBaseline='middle';
+    mmX.fillText(b.id,bx,bz);
+  });
+}
+
+// ── INIT ──
+renderList(); updateMM();
+setInterval(updateMM,2000);
+
+let lp=0;
+const ldi=setInterval(()=>{
+  lp=Math.min(100,lp+Math.random()*9+2);
+  document.getElementById('load-fill').style.width=lp+'%';
+  if(lp>=100){clearInterval(ldi);setTimeout(()=>{const ld=document.getElementById('loading');ld.style.opacity='0';setTimeout(()=>ld.style.display='none',800);},300);}
+},55);
+</script>
+</body>
+</html>
